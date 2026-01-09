@@ -56,12 +56,6 @@ body {
 }
 
 .purple {
-    background-color: #b59f3b;
-    border-color: #b59f3b;
-}
-
-/* User said Purple but Nerdle uses purple, user hex looks yellow/gold? User said "Purple -> correct char, wrong place". I will use a purple color #9b28ef per previous request or #b59f3b if they want yellow. Wait, user text says "Purple", I will use Purple. */
-.purple {
     background-color: #8e44ad;
     border-color: #8e44ad;
 }
