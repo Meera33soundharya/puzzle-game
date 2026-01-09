@@ -1,0 +1,4 @@
+root: "C:\Users\Admin\OneDrive\Desktop\game 1" 
+path: C:\Program Files\nodejs 
+arch: 64 
+proxy: none
