@@ -1,0 +1,87 @@
+body {
+    background: #1a1a2e;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(8, 50px);
+    gap: 5px;
+    margin: 20px;
+}
+
+.tile {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid #444;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.row {
+    display: contents;
+    /* Allows children to be part of the grid */
+}
+
+/* Add row wrapper style if we want rows to block, but grid-template-columns suggests direct children or handled via structure */
+/* The user's JS example creates a 'row' div, so we might need to adjust styles to handle that OR adjust the grid */
+/* User example: document.getElementById('game-board').appendChild(row); */
+/* If rows are divs, the grid should probably be on the game-board and rows should be display: contents or flex? */
+/* Actually, user example style says: grid-template-columns: repeat(8, 50px); on #game-board */
+/* But JS creates rows. This implies the rows themselves hold tiles. */
+/* Let's make rows display: contents so tiles fall into the grid, OR make game-board a flex col and rows flex rows. */
+/* User style block is minimal. I will adapt slightly to ensure rows work. */
+
+#game-board {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.row {
+    display: flex;
+    gap: 5px;
+}
+
+.green {
+    background-color: #538d4e;
+    border-color: #538d4e;
+}
+
+.purple {
+    background-color: #8e44ad;
+    border-color: #8e44ad;
+}
+
+.black {
+    background-color: #3a3a3c;
+    border-color: #3a3a3c;
+}
+
+#keyboard {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+}
+
+button {
+    padding: 15px;
+    font-size: 1.2rem;
+    background: #16213e;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0f3460;
+}

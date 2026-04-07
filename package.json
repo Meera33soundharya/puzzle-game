@@ -4,9 +4,14 @@
   "description": "NumberMind Puzzle Game",
   "main": "index.html",
   "scripts": {
-    "dev": "npx serve ."
+    "dev": "npx serve .",
+    "start": "node src/server.js",
+    "start:number": "node number_puzzle_app/server.js"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
 }
