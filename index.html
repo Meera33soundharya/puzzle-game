@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NumberMind — Puzzle Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c27;
+  --border: rgba(255,255,255,0.08);
+  --accent: #6c63ff;
+  --accent2: #ff6584;
+  --accent3: #43e97b;
+  --accent4: #f7971e;
+  --text: #f0f0f8;
+  --text2: #8888aa;
+  --text3: #4a4a66;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: -200px; left: -200px;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(108,99,255,0.12) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -200px; right: -200px;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(255,101,132,0.08) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+
+/* LAYOUT */
+.shell { max-width: 420px; margin: 0 auto; padding: 0 0 80px; position: relative; z-index: 1; }
+
+/* HEADER */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 20px 16px;
+}
+.logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+.logo span { color: var(--accent); }
+.hdr-stats { display: flex; gap: 10px; }
+.hpill {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--text2);
+  display: flex; align-items: center; gap: 5px;
+}
+.hpill b { color: var(--text); font-weight: 700; }
+
+/* NAV */
+.nav {
+  display: flex; gap: 4px; padding: 0 16px 16px;
+  overflow-x: auto; scrollbar-width: none;
+}
+.nav::-webkit-scrollbar { display: none; }
+.ntab {
+  flex-shrink: 0; padding: 8px 16px; border-radius: 30px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text2); transition: all .2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.ntab:hover { border-color: rgba(108,99,255,0.4); color: var(--text); }
+.ntab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ntab .ico { font-size: 14px; }
+
+/* SCREENS */
+.scr { display: none; padding: 0 16px; flex-direction: column; gap: 16px; animation: fadeUp .3s ease; }
+.scr.on { display: flex; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* CARDS */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
+.card-accent { border-color: rgba(108,99,255,0.3); }
+
+/* STREAK BANNER */
+.streak-banner {
+  background: linear-gradient(135deg, #1a1535, #1f1a3a);
+  border: 1px solid rgba(108,99,255,0.4);
+  border-radius: var(--radius); padding: 18px 20px;
+  display: flex; align-items: center; gap: 16px;
+}
+.streak-ico { font-size: 32px; line-height: 1; }
+.streak-info { flex: 1; }
+.streak-num { font-size: 20px; font-weight: 800; color: var(--accent); }
+.streak-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.claimbtn {
+  background: var(--accent); color: #fff; border: none;
+  padding: 8px 16px; border-radius: 20px; font-size: 13px;
+  font-family: 'Syne', sans-serif; font-weight: 700;
+  cursor: pointer; transition: opacity .2s; white-space: nowrap;
+}
+.claimbtn:hover { opacity: .85; }
+.claimbtn:disabled { opacity: .5; cursor: default; }
+
+/* METRIC GRID */
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.mcard {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px; text-align: center;
+}
+.mval { font-size: 22px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+.mlbl { font-size: 11px; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+/* MODE GRID */
+.mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modecard {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; cursor: pointer;
+  transition: all .2s; position: relative; overflow: hidden;
+}
+.modecard::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  opacity: 0; transition: opacity .2s;
+}
+.modecard:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+.modecard:hover::before { opacity: 1; }
+.modecard.c1::before { background: var(--accent); }
+.modecard.c2::before { background: var(--accent3); }
+.modecard.c3::before { background: var(--accent4); }
+.modecard.c4::before { background: var(--accent2); }
+.mode-ico { font-size: 24px; margin-bottom: 10px; }
+.mode-name { font-size: 14px; font-weight: 700; }
+.mode-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.mode-prog { height: 3px; background: var(--surface); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.mode-pfill { height: 100%; border-radius: 2px; }
+
+/* SECTION LABEL */
+.sec-lbl { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; padding: 0 2px; }
+
+/* GAME HEADER */
+.gh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.gtitle { font-size: 18px; font-weight: 800; }
+.timer-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700;
+  background: var(--surface2); border: 1px solid var(--border);
+  padding: 5px 14px; border-radius: 20px; color: var(--accent3);
+  transition: color .3s;
+}
+.timer-badge.warn { color: var(--accent2); border-color: rgba(255,101,132,0.4); }
+
+/* DIFF SELECTOR */
+.diff-row { display: flex; gap: 8px; }
+.dbtn {
+  flex: 1; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text2); cursor: pointer; font-family: 'Syne', sans-serif;
+  transition: all .15s;
+}
+.dbtn:hover { border-color: rgba(108,99,255,.4); color: var(--text); }
+.dbtn.on { background: rgba(108,99,255,.15); border-color: var(--accent); color: var(--accent); }
+
+/* SLIDE BOARD */
+.slide-wrap { display: flex; justify-content: center; }
+.slide-grid {
+  display: grid; gap: 4px;
+  background: rgba(108,99,255,.15);
+  border: 2px solid rgba(108,99,255,.4);
+  border-radius: 14px; padding: 4px;
+  overflow: hidden;
+}
+.tile {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  cursor: pointer; border-radius: 10px;
+  background: var(--surface2); color: var(--text);
+  transition: background .15s, transform .1s;
+  user-select: none;
+}
+.tile:hover:not(.empty) { background: rgba(108,99,255,.25); }
+.tile:active:not(.empty) { transform: scale(.95); }
+.tile.empty { background: rgba(108,99,255,.05); cursor: default; }
+.tile.done { background: rgba(67,233,123,.15); color: var(--accent3); }
+
+/* ACTION ROW */
+.actrow { display: flex; gap: 8px; }
+.btn {
+  flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 700;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text2); cursor: pointer; font-family: 'Syne', sans-serif;
+  transition: all .15s;
+}
+.btn:hover { border-color: rgba(255,255,255,.15); color: var(--text); }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.pri:hover { background: #5a52e0; }
+.btn.grn { background: rgba(67,233,123,.15); border-color: rgba(67,233,123,.4); color: var(--accent3); }
+
+/* WIN BANNER */
+.win-banner {
+  background: rgba(67,233,123,.1); border: 1px solid rgba(67,233,123,.4);
+  border-radius: var(--radius-sm); padding: 12px 16px;
+  text-align: center; font-size: 14px; font-weight: 700; color: var(--accent3);
+  display: none;
+  animation: pop .4s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes pop { from { transform: scale(.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* SEQ CELLS */
+.seq-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.sc {
+  width: 50px; height: 50px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  border: 1px solid var(--border); color: var(--text);
+}
+.sc.fill { background: rgba(108,99,255,.2); border-color: rgba(108,99,255,.4); }
+.sc.blank { background: rgba(247,151,30,.08); border: 2px dashed rgba(247,151,30,.5); color: var(--accent4); }
+.sc.ok { background: rgba(67,233,123,.15); border-color: rgba(67,233,123,.5); color: var(--accent3); }
+
+/* OPTIONS */
+.opts-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.ob {
+  padding: 12px 6px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface2);
+  font-size: 17px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; color: var(--accent); transition: all .15s;
+}
+.ob:hover { border-color: rgba(108,99,255,.5); background: rgba(108,99,255,.1); }
+.ob.yes { background: rgba(67,233,123,.15); border-color: rgba(67,233,123,.5); color: var(--accent3); }
+.ob.no { background: rgba(255,101,132,.1); border-color: rgba(255,101,132,.4); color: var(--accent2); }
+.ob:disabled { cursor: default; }
+
+/* FEEDBACK */
+.fb { font-size: 13px; text-align: center; min-height: 18px; font-weight: 600; }
+
+/* PROGRESS BAR */
+.prog-wrap {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.prog-track { flex: 1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width .4s ease; }
+.prog-lbl { font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text2); }
+
+/* MATH BLITZ */
+.math-q-big {
+  font-size: 38px; font-weight: 800; font-family: 'JetBrains Mono', monospace;
+  text-align: center; padding: 20px 0; color: var(--text);
+  letter-spacing: -1px;
+}
+.math-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 260px; margin: 0 auto; }
+.math-btn {
+  padding: 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface2);
+  font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; color: var(--text); transition: all .15s;
+}
+.math-btn:hover { border-color: rgba(108,99,255,.5); background: rgba(108,99,255,.1); color: var(--accent); }
+.math-btn.yes { background: rgba(67,233,123,.15); border-color: rgba(67,233,123,.5); color: var(--accent3); }
+.math-btn.no { background: rgba(255,101,132,.1); border-color: rgba(255,101,132,.4); color: var(--accent2); }
+
+/* STATS SCREEN */
+.sk-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.sk-lbl { font-size: 12px; color: var(--text2); width: 90px; flex-shrink: 0; }
+.sk-track { flex: 1; height: 6px; background: var(--surface); border-radius: 3px; overflow: hidden; }
+.sk-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+.sk-pct { font-size: 12px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text2); width: 34px; text-align: right; }
+
+/* LEADERBOARD */
+.lb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.lb-row:last-child { border-bottom: none; }
+.rk { font-size: 16px; width: 28px; text-align: center; }
+.av {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.pnm { flex: 1; font-size: 14px; font-weight: 600; }
+.pnm small { display: block; font-size: 11px; color: var(--text3); font-weight: 400; }
+.ppt { font-size: 14px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--accent); }
+
+/* BADGE GRID */
+.badge-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.badge {
+  text-align: center; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 8px;
+}
+.badge-ico { font-size: 22px; margin-bottom: 6px; }
+.badge-nm { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+
+/* GAMEOVER */
+.gameover {
+  background: rgba(255,101,132,.08); border: 1px solid rgba(255,101,132,.3);
+  border-radius: var(--radius-sm); padding: 16px; text-align: center; display: none;
+}
+.gameover-title { font-size: 20px; font-weight: 800; color: var(--accent2); }
+.gameover-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 420px;
+  background: rgba(10,10,15,.95); backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex; z-index: 100;
+}
+.bnav {
+  flex: 1; padding: 10px 4px; text-align: center; cursor: pointer;
+  color: var(--text3); transition: color .2s; border: none; background: transparent;
+  font-family: 'Syne', sans-serif;
+}
+.bnav:hover { color: var(--text2); }
+.bnav.on { color: var(--accent); }
+.bnav-ico { font-size: 18px; display: block; margin-bottom: 2px; }
+.bnav-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="hdr">
+    <div class="logo">Number<span>Mind</span></div>
+    <div class="hdr-stats">
+      <div class="hpill">⭐ <b id="score">0</b></div>
+      <div class="hpill">🏅 Lv<b id="lvl">1</b></div>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <div id="s-home" class="scr on">
+    <div class="streak-banner">
+      <div class="streak-ico">🔥</div>
+      <div class="streak-info">
+        <div class="streak-num">5-Day Streak!</div>
+        <div class="streak-sub">Claim today's bonus reward</div>
+      </div>
+      <button class="claimbtn" id="claimbtn" onclick="claim()">+50 pts</button>
+    </div>
+    <div class="metrics">
+      <div class="mcard"><div class="mval" style="color:var(--accent)">34</div><div class="mlbl">Solved</div></div>
+      <div class="mcard"><div class="mval" style="color:var(--accent3)">87%</div><div class="mlbl">Accuracy</div></div>
+      <div class="mcard"><div class="mval" style="color:var(--accent4)">1:42</div><div class="mlbl">Avg Time</div></div>
+    </div>
+    <div class="sec-lbl">Game modes</div>
+    <div class="mode-grid">
+      <div class="modecard c1" onclick="go('slide')">
+        <div class="mode-ico">🔢</div>
+        <div class="mode-name">Slide Puzzle</div>
+        <div class="mode-sub">Arrange tiles in order</div>
+        <div class="mode-prog"><div class="mode-pfill" style="width:70%;background:var(--accent)"></div></div>
+      </div>
+      <div class="modecard c2" onclick="go('seq')">
+        <div class="mode-ico">🔮</div>
+        <div class="mode-name">Sequences</div>
+        <div class="mode-sub">Find the pattern</div>
+        <div class="mode-prog"><div class="mode-pfill" style="width:55%;background:var(--accent3)"></div></div>
+      </div>
+      <div class="modecard c3" onclick="go('math')">
+        <div class="mode-ico">⚡</div>
+        <div class="mode-name">Math Blitz</div>
+        <div class="mode-sub">60-second speed quiz</div>
+        <div class="mode-prog"><div class="mode-pfill" style="width:40%;background:var(--accent4)"></div></div>
+      </div>
+      <div class="modecard c4" onclick="go('stats')">
+        <div class="mode-ico">🏆</div>
+        <div class="mode-name">My Stats</div>
+        <div class="mode-sub">Progress & leaderboard</div>
+        <div class="mode-prog"><div class="mode-pfill" style="width:80%;background:var(--accent2)"></div></div>
+      </div>
+    </div>
+    <div class="sec-lbl">Daily challenge</div>
+    <div class="card card-accent" style="display:flex;align-items:center;gap:14px">
+      <div style="font-size:28px">🎯</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700">Today's Fibonacci Challenge</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px">Complete all 8 sequence puzzles</div>
+      </div>
+      <button class="btn pri" onclick="go('seq')" style="flex:0;padding:8px 16px">Play</button>
+    </div>
+  </div>
+
+  <!-- SLIDE PUZZLE -->
+  <div id="s-slide" class="scr">
+    <div class="gh">
+      <div class="gtitle">Slide Puzzle</div>
+      <div class="timer-badge" id="slide-timer">00:00</div>
+    </div>
+    <div class="diff-row">
+      <button class="dbtn" onclick="setSize(3,this)">3×3</button>
+      <button class="dbtn on" onclick="setSize(4,this)">4×4</button>
+      <button class="dbtn" onclick="setSize(5,this)">5×5</button>
+    </div>
+    <div class="slide-wrap"><div id="slide-board" class="slide-grid"></div></div>
+    <div class="win-banner" id="slide-win">🎉 Puzzle solved! +100 points earned!</div>
+    <div class="actrow">
+      <button class="btn" onclick="shuffleBoard()">Shuffle</button>
+      <button class="btn" onclick="solveHint()">Hint</button>
+      <button class="btn pri" onclick="newSlide()">New Game</button>
+    </div>
+    <div class="metrics" style="grid-template-columns:1fr 1fr">
+      <div class="mcard"><div class="mval" id="moves" style="color:var(--accent)">0</div><div class="mlbl">Moves</div></div>
+      <div class="mcard"><div class="mval" id="slide-best" style="color:var(--accent3)">--</div><div class="mlbl">Best</div></div>
+    </div>
+  </div>
+
+  <!-- SEQUENCE -->
+  <div id="s-seq" class="scr">
+    <div class="gh">
+      <div class="gtitle">Sequences</div>
+      <div class="timer-badge" id="seq-timer">30</div>
+    </div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--text2)" id="seq-q">Find the missing number:</div>
+      <div class="seq-row" id="seq-cells"></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Choose the correct answer:</div>
+      <div class="opts-grid" id="seq-opts"></div>
+      <div class="fb" id="seq-fb" style="margin-top:10px"></div>
+    </div>
+    <div class="prog-wrap">
+      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:700">Progress</div>
+      <div class="prog-track"><div class="prog-fill" id="seq-prog" style="width:0%"></div></div>
+      <div class="prog-lbl" id="seq-lbl">0/8</div>
+    </div>
+    <div class="actrow">
+      <button class="btn" onclick="seqPrev()">← Prev</button>
+      <button class="btn" onclick="seqHint()">💡 Hint</button>
+      <button class="btn" onclick="seqNext()">Skip →</button>
+      <button class="btn pri" onclick="newSeq()">Restart</button>
+    </div>
+  </div>
+
+  <!-- MATH BLITZ -->
+  <div id="s-math" class="scr">
+    <div class="gh">
+      <div class="gtitle">Math Blitz</div>
+      <div class="timer-badge" id="math-timer">60</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:12px;color:var(--text2)">Solve as fast as you can!</div>
+      <div class="math-q-big" id="math-q">Press Start!</div>
+      <div class="math-opts" id="math-opts"></div>
+      <div class="fb" id="math-fb" style="margin-top:12px"></div>
+    </div>
+    <div class="gameover" id="math-gameover">
+      <div class="gameover-title">Time's Up!</div>
+      <div class="gameover-sub" id="math-result">You answered 0 correctly</div>
+    </div>
+    <div class="metrics">
+      <div class="mcard"><div class="mval" id="math-right" style="color:var(--accent3)">0</div><div class="mlbl">Correct</div></div>
+      <div class="mcard"><div class="mval" id="math-wrong" style="color:var(--accent2)">0</div><div class="mlbl">Wrong</div></div>
+      <div class="mcard"><div class="mval" id="math-streak" style="color:var(--accent4)">0</div><div class="mlbl">Streak</div></div>
+    </div>
+    <button class="btn pri" id="math-start" onclick="startMath()" style="width:100%;padding:12px;font-size:15px">Start Game</button>
+  </div>
+
+  <!-- STATS -->
+  <div id="s-stats" class="scr">
+    <div class="card">
+      <div class="sec-lbl" style="margin-bottom:14px">Skills breakdown</div>
+      <div class="sk-row"><div class="sk-lbl">Logic</div><div class="sk-track"><div class="sk-fill" style="width:82%;background:var(--accent)"></div></div><div class="sk-pct">82%</div></div>
+      <div class="sk-row"><div class="sk-lbl">Sequences</div><div class="sk-track"><div class="sk-fill" style="width:68%;background:var(--accent3)"></div></div><div class="sk-pct">68%</div></div>
+      <div class="sk-row"><div class="sk-lbl">Arithmetic</div><div class="sk-track"><div class="sk-fill" style="width:75%;background:var(--accent4)"></div></div><div class="sk-pct">75%</div></div>
+      <div class="sk-row"><div class="sk-lbl">Speed</div><div class="sk-track"><div class="sk-fill" style="width:50%;background:var(--accent2)"></div></div><div class="sk-pct">50%</div></div>
+      <div class="sk-row"><div class="sk-lbl">Memory</div><div class="sk-track"><div class="sk-fill" style="width:60%;background:#a78bfa)"></div></div><div class="sk-pct">60%</div></div>
+    </div>
+    <div class="card">
+      <div class="sec-lbl" style="margin-bottom:14px">Badges</div>
+      <div class="badge-grid">
+        <div class="badge"><div class="badge-ico">🏆</div><div class="badge-nm">Top Solver</div></div>
+        <div class="badge"><div class="badge-ico">🔥</div><div class="badge-nm">5-day streak</div></div>
+        <div class="badge"><div class="badge-ico">⚡</div><div class="badge-nm">Speed star</div></div>
+        <div class="badge"><div class="badge-ico">🎯</div><div class="badge-nm">Precision</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-lbl" style="margin-bottom:14px">Leaderboard — this week</div>
+      <div class="lb-row"><div class="rk">🥇</div><div class="av" style="background:rgba(247,151,30,.15);color:var(--accent4)">AK</div><div class="pnm">Arjun K.<small>Top scorer</small></div><div class="ppt">3120</div></div>
+      <div class="lb-row"><div class="rk">🥈</div><div class="av" style="background:rgba(108,99,255,.15);color:var(--accent)">ME</div><div class="pnm">You<small>Keep it up!</small></div><div class="ppt" id="my-pts">0</div></div>
+      <div class="lb-row"><div class="rk">🥉</div><div class="av" style="background:rgba(67,233,123,.15);color:var(--accent3)">SR</div><div class="pnm">Sara R.<small>3rd place</small></div><div class="ppt">890</div></div>
+      <div class="lb-row"><div class="rk" style="color:var(--text3);font-size:13px">4</div><div class="av" style="background:rgba(255,101,132,.1);color:var(--accent2)">TM</div><div class="pnm">Tom M.</div><div class="ppt">740</div></div>
+      <div class="lb-row"><div class="rk" style="color:var(--text3);font-size:13px">5</div><div class="av" style="background:rgba(255,255,255,.06);color:var(--text2)">NP</div><div class="pnm">Nisha P.</div><div class="ppt">620</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="bnav on" onclick="go('home')"><span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span></button>
+  <button class="bnav" onclick="go('slide')"><span class="bnav-ico">🔢</span><span class="bnav-lbl">Slide</span></button>
+  <button class="bnav" onclick="go('seq')"><span class="bnav-ico">🔮</span><span class="bnav-lbl">Sequence</span></button>
+  <button class="bnav" onclick="go('math')"><span class="bnav-ico">⚡</span><span class="bnav-lbl">Blitz</span></button>
+  <button class="bnav" onclick="go('stats')"><span class="bnav-ico">🏆</span><span class="bnav-lbl">Stats</span></button>
+</div>
+
+<script>
+var globalScore = 0, globalLvl = 1;
+var slideTimer = null, seqTimer = null, mathTimer = null;
+var slideSec = 0, seqSec = 30, mathSec = 60;
+var curSize = 4, tiles = [], emptyIdx = 0, moveCount = 0, slideBest = null;
+var seqIdx = 0, seqCorrect = 0, seqDone = [];
+var mathRight = 0, mathWrong = 0, mathStreak = 0, mathActive = false, curMath = null;
+
+function go(id) {
+  document.querySelectorAll('.scr').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.bnav').forEach(b => b.classList.remove('on'));
+  document.getElementById('s-' + id).classList.add('on');
+  var ids = ['home', 'slide', 'seq', 'math', 'stats'];
+  var bnavs = document.querySelectorAll('.bnav');
+  var i = ids.indexOf(id);
+  if (i >= 0) bnavs[i].classList.add('on');
+  if (id === 'slide') { clearInterval(slideTimer); slideSec = 0; buildSlide(); }
+  else clearInterval(slideTimer);
+  if (id === 'seq') buildSeq();
+  else clearInterval(seqTimer);
+  if (id !== 'math') { clearInterval(mathTimer); mathActive = false; }
+  if (id === 'stats') document.getElementById('my-pts').textContent = globalScore;
+}
+
+function addScore(n) {
+  globalScore += n;
+  document.getElementById('score').textContent = globalScore;
+  globalLvl = Math.floor(globalScore / 200) + 1;
+  document.getElementById('lvl').textContent = globalLvl;
+  document.getElementById('my-pts').textContent = globalScore;
+}
+
+function claim() {
+  addScore(50);
+  var b = document.getElementById('claimbtn');
+  b.textContent = 'Claimed!'; b.disabled = true;
+}
+
+/* ---- SLIDE ---- */
+function setSize(n, btn) {
+  document.querySelectorAll('.dbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  curSize = n; buildSlide();
+}
+
+function buildSlide() {
+  var n = curSize * curSize;
+  tiles = Array.from({ length: n }, (_, i) => i + 1);
+  tiles[n - 1] = 0; emptyIdx = n - 1;
+  moveCount = 0; document.getElementById('moves').textContent = 0;
+  document.getElementById('slide-win').style.display = 'none';
+  shuffleBoard(); startSlideTimer();
+}
+
+function shuffleBoard() {
+  for (var i = 0; i < 400; i++) {
+    var ms = getMoves(); var m = ms[Math.floor(Math.random() * ms.length)];
+    tiles[emptyIdx] = tiles[m]; tiles[m] = 0; emptyIdx = m;
+  }
+  moveCount = 0; document.getElementById('moves').textContent = 0;
+  document.getElementById('slide-win').style.display = 'none';
+  renderSlide();
+}
+
+function getMoves() {
+  var r = Math.floor(emptyIdx / curSize), c = emptyIdx % curSize, ms = [];
+  if (r > 0) ms.push(emptyIdx - curSize);
+  if (r < curSize - 1) ms.push(emptyIdx + curSize);
+  if (c > 0) ms.push(emptyIdx - 1);
+  if (c < curSize - 1) ms.push(emptyIdx + 1);
+  return ms;
+}
+
+function renderSlide() {
+  var b = document.getElementById('slide-board');
+  b.style.gridTemplateColumns = 'repeat(' + curSize + ',1fr)';
+  var sz = curSize === 3 ? 80 : curSize === 4 ? 68 : 56;
+  b.innerHTML = '';
+  tiles.forEach(function(v, i) {
+    var d = document.createElement('div');
+    d.className = 'tile' + (v === 0 ? ' empty' : '');
+    d.style.width = sz + 'px'; d.style.height = sz + 'px';
+    d.style.fontSize = (curSize === 5 ? 16 : curSize === 4 ? 20 : 24) + 'px';
+    if (v !== 0) {
+      d.textContent = v;
+      var isCorrect = v === i + 1;
+      if (isCorrect) d.classList.add('done');
+      d.onclick = (function(idx) { return function() { slideTile(idx); }; })(i);
+    }
+    b.appendChild(d);
+  });
+}
+
+function slideTile(idx) {
+  if (getMoves().indexOf(idx) === -1) return;
+  tiles[emptyIdx] = tiles[idx]; tiles[idx] = 0; emptyIdx = idx;
+  moveCount++; document.getElementById('moves').textContent = moveCount;
+  renderSlide();
+  if (checkSliceSolved()) {
+    clearInterval(slideTimer);
+    document.getElementById('slide-win').style.display = 'block';
+    if (slideBest === null || moveCount < slideBest) {
+      slideBest = moveCount;
+      document.getElementById('slide-best').textContent = moveCount;
+    }
+    addScore(100 + Math.max(0, 50 - moveCount));
+  }
+}
+
+function checkSliceSolved() {
+  for (var i = 0; i < tiles.length - 1; i++) if (tiles[i] !== i + 1) return false;
+  return tiles[tiles.length - 1] === 0;
+}
+
+function newSlide() { buildSlide(); }
+
+function solveHint() {
+  var best = null, bestDist = Infinity;
+  getMoves().forEach(function(m) {
+    var v = tiles[m];
+    var targetR = Math.floor((v - 1) / curSize), targetC = (v - 1) % curSize;
+    var curR = Math.floor(m / curSize), curC = m % curSize;
+    var dist = Math.abs(targetR - curR) + Math.abs(targetC - curC);
+    if (dist < bestDist) { bestDist = dist; best = m; }
+  });
+  if (best !== null) slideTile(best);
+}
+
+function startSlideTimer() {
+  clearInterval(slideTimer); slideSec = 0;
+  document.getElementById('slide-timer').textContent = '00:00';
+  slideTimer = setInterval(function() {
+    slideSec++;
+    var m = String(Math.floor(slideSec / 60)).padStart(2, '0');
+    var s = String(slideSec % 60).padStart(2, '0');
+    document.getElementById('slide-timer').textContent = m + ':' + s;
+  }, 1000);
+}
+
+/* ---- SEQUENCES ---- */
+var seqs = [
+  { q: 'Arithmetic — add a constant each time:', s: [3, 6, 9, '?', 15, 18], a: 12, o: [10, 11, 12, 13], h: 'The difference is always +3' },
+  { q: 'Geometric — multiply by a constant:', s: [2, 4, 8, '?', 32], a: 16, o: [14, 16, 18, 20], h: 'Each term is doubled' },
+  { q: 'Square numbers — 1², 2², 3²...:', s: [1, 4, 9, 16, '?', 36], a: 25, o: [22, 24, 25, 28], h: '5² = 25' },
+  { q: 'Fibonacci — sum of previous two:', s: [1, 1, 2, 3, 5, '?'], a: 8, o: [6, 7, 8, 9], h: '3 + 5 = 8' },
+  { q: 'Multiples of 11:', s: [11, 22, 33, '?', 55], a: 44, o: [40, 42, 44, 46], h: 'Add 11 each time' },
+  { q: 'Decreasing odd differences:', s: [50, 49, 47, 44, 40, '?'], a: 35, o: [33, 34, 35, 36], h: 'Subtract 1, 2, 3, 4, 5...' },
+  { q: 'Powers of 3:', s: [1, 3, 9, 27, '?'], a: 81, o: [54, 72, 81, 90], h: '3⁴ = 81' },
+  { q: 'Prime number sequence:', s: [2, 3, 5, 7, 11, '?'], a: 13, o: [12, 13, 14, 15], h: 'Next prime after 11' }
+];
+
+function buildSeq() {
+  var p = seqs[seqIdx];
+  document.getElementById('seq-q').textContent = p.q;
+  var cells = document.getElementById('seq-cells'); cells.innerHTML = '';
+  p.s.forEach(function(v) {
+    var d = document.createElement('div');
+    d.className = 'sc ' + (v === '?' ? 'blank' : 'fill');
+    d.textContent = v; cells.appendChild(d);
+  });
+  var opts = document.getElementById('seq-opts'); opts.innerHTML = '';
+  [...p.o].sort(() => Math.random() - .5).forEach(function(o) {
+    var b = document.createElement('button'); b.className = 'ob'; b.textContent = o;
+    b.onclick = (function(val, btn, pp) { return function() { ansSeq(val, btn, pp); }; })(o, b, p);
+    opts.appendChild(b);
+  });
+  document.getElementById('seq-fb').textContent = '';
+  startSeqTimer();
+}
+
+function ansSeq(val, btn, p) {
+  clearInterval(seqTimer);
+  document.querySelectorAll('#seq-opts .ob').forEach(b => b.disabled = true);
+  if (val === p.a) {
+    btn.classList.add('yes');
+    document.getElementById('seq-fb').textContent = '✓ Correct! +50 pts';
+    document.getElementById('seq-fb').style.color = 'var(--accent3)';
+    if (!seqDone[seqIdx]) { addScore(50); seqCorrect++; seqDone[seqIdx] = true; }
+    var blank = document.querySelector('#seq-cells .sc.blank');
+    if (blank) { blank.classList.remove('blank'); blank.classList.add('ok'); blank.textContent = val; }
+  } else {
+    btn.classList.add('no');
+    document.getElementById('seq-fb').textContent = '✗ Wrong. Hint: ' + p.h;
+    document.getElementById('seq-fb').style.color = 'var(--accent2)';
+  }
+  document.getElementById('seq-prog').style.width = Math.round(seqCorrect / 8 * 100) + '%';
+  document.getElementById('seq-lbl').textContent = seqCorrect + '/8';
+}
+
+function seqNext() { seqIdx = (seqIdx + 1) % seqs.length; buildSeq(); }
+function seqPrev() { seqIdx = (seqIdx - 1 + seqs.length) % seqs.length; buildSeq(); }
+function seqHint() {
+  document.getElementById('seq-fb').textContent = '💡 ' + seqs[seqIdx].h;
+  document.getElementById('seq-fb').style.color = 'var(--accent4)';
+}
+function newSeq() {
+  seqIdx = 0; seqCorrect = 0; seqDone = new Array(8).fill(false);
+  document.getElementById('seq-prog').style.width = '0%';
+  document.getElementById('seq-lbl').textContent = '0/8';
+  buildSeq();
+}
+
+function startSeqTimer() {
+  clearInterval(seqTimer); seqSec = 30;
+  var el = document.getElementById('seq-timer');
+  el.textContent = 30; el.classList.remove('warn');
+  seqTimer = setInterval(function() {
+    seqSec--;
+    el.textContent = seqSec;
+    if (seqSec <= 10) el.classList.add('warn');
+    if (seqSec <= 0) {
+      clearInterval(seqTimer);
+      document.getElementById('seq-fb').textContent = 'Time up! Answer: ' + seqs[seqIdx].a;
+      document.getElementById('seq-fb').style.color = 'var(--accent2)';
+      setTimeout(seqNext, 1500);
+    }
+  }, 1000);
+}
+
+/* ---- MATH BLITZ ---- */
+function genMath() {
+  var ops = ['+', '-', '×', '÷'];
+  var op = ops[Math.floor(Math.random() * 4)];
+  var a, b, ans;
+  if (op === '+') { a = Math.floor(Math.random() * 50) + 1; b = Math.floor(Math.random() * 50) + 1; ans = a + b; }
+  else if (op === '-') { a = Math.floor(Math.random() * 50) + 10; b = Math.floor(Math.random() * a) + 1; ans = a - b; }
+  else if (op === '×') { a = Math.floor(Math.random() * 12) + 1; b = Math.floor(Math.random() * 12) + 1; ans = a * b; }
+  else { b = Math.floor(Math.random() * 9) + 2; ans = Math.floor(Math.random() * 10) + 1; a = b * ans; }
+  return { q: a + ' ' + op + ' ' + b + ' = ?', a: ans };
+}
+
+function buildMathQ() {
+  curMath = genMath();
+  document.getElementById('math-q').textContent = curMath.q;
+  var wrong = new Set();
+  while (wrong.size < 3) {
+    var w = curMath.a + Math.floor(Math.random() * 20) - 10;
+    if (w !== curMath.a && w > 0) wrong.add(w);
+  }
+  var opts = [curMath.a, ...wrong].sort(() => Math.random() - .5);
+  var cont = document.getElementById('math-opts'); cont.innerHTML = '';
+  opts.forEach(function(o) {
+    var b = document.createElement('button'); b.className = 'math-btn'; b.textContent = o;
+    b.onclick = (function(val, btn) { return function() { ansMath(val, btn); }; })(o, b);
+    cont.appendChild(b);
+  });
+  document.getElementById('math-fb').textContent = '';
+}
+
+function ansMath(val, btn) {
+  if (!mathActive) return;
+  document.querySelectorAll('.math-btn').forEach(b => b.disabled = true);
+  if (val === curMath.a) {
+    btn.classList.add('yes');
+    mathRight++; mathStreak++;
+    var pts = 10 + mathStreak * 2;
+    addScore(pts);
+    document.getElementById('math-fb').textContent = '+' + pts + ' pts! Streak: ' + mathStreak;
+    document.getElementById('math-fb').style.color = 'var(--accent3)';
+  } else {
+    btn.classList.add('no');
+    mathWrong++; mathStreak = 0;
+    document.getElementById('math-fb').textContent = '✗ Answer was ' + curMath.a;
+    document.getElementById('math-fb').style.color = 'var(--accent2)';
+  }
+  document.getElementById('math-right').textContent = mathRight;
+  document.getElementById('math-wrong').textContent = mathWrong;
+  document.getElementById('math-streak').textContent = mathStreak;
+  setTimeout(buildMathQ, 700);
+}
+
+function startMath() {
+  mathRight = 0; mathWrong = 0; mathStreak = 0; mathSec = 60; mathActive = true;
+  document.getElementById('math-right').textContent = 0;
+  document.getElementById('math-wrong').textContent = 0;
+  document.getElementById('math-streak').textContent = 0;
+  document.getElementById('math-gameover').style.display = 'none';
+  document.getElementById('math-start').textContent = 'Restart';
+  var el = document.getElementById('math-timer');
+  el.textContent = 60; el.classList.remove('warn');
+  clearInterval(mathTimer);
+  buildMathQ();
+  mathTimer = setInterval(function() {
+    mathSec--;
+    el.textContent = mathSec;
+    if (mathSec <= 10) el.classList.add('warn');
+    if (mathSec <= 0) {
+      clearInterval(mathTimer); mathActive = false;
+      document.getElementById('math-q').textContent = 'Game Over!';
+      document.getElementById('math-opts').innerHTML = '';
+      document.getElementById('math-fb').textContent = '';
+      var go = document.getElementById('math-gameover');
+      go.style.display = 'block';
+      document.getElementById('math-result').textContent =
+        'Correct: ' + mathRight + ' · Wrong: ' + mathWrong + ' · Score: ' + globalScore;
+    }
+  }, 1000);
+}
+
+seqDone = new Array(8).fill(false);
+buildSlide();
+buildSeq();
+</script>
+</body>
+</html>
